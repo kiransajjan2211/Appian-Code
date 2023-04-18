@@ -1,0 +1,1791 @@
+{
+  a!localVariables(
+    local!across12months: null,
+    local!snapshotlist: rule!AND_PHVAL_qe_fetchSnapshot(type: null),
+    /* variale used to fetch only perticular types */    
+    local!tollgateSnapshots: if(
+      or(local!across12months),
+      index(
+        local!snapshotlist,
+        wherecontains(
+          583,
+          tointeger(index(local!snapshotlist, "type", null))
+        ),
+        null
+      ),
+      null
+    ),
+    local!12latesttollgatesnaps: if(
+      a!isNullOrEmpty(local!tollgateSnapshots),
+      null,
+      reject(
+        fn!isnull,
+        a!forEach(
+          local!tollgateSnapshots,
+          if(fv!index > 12, null, fv!item)
+        )
+      )
+    ),
+    local!selectedDU: null,
+    local!selectedProject: {},
+    local!metrics: {
+      a!map(
+        metricName: "Peak sales",
+        metricValue: "peaksales",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "NPV",
+        metricValue: "npv",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "eNPV",
+        metricValue: "enpv",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "ROCE",
+        metricValue: "roce",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "eROCE",
+        metricValue: "eroce",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "Cost to approval (Int + Ext)",
+        metricValue: "sumtoapproval",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "eCost to approval (Int + Ext)",
+        metricValue: "esumtoapproval",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "VNDP",
+        metricValue: "vNdp",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "Submission date",
+        metricValue: "Submission date",
+        metricCategory: "pos"
+      ),
+      a!map(
+        metricName: "Approval date",
+        metricValue: "Approval date",
+        metricCategory: "pos"
+      ),
+      a!map(
+        metricName: "Submission year",
+        metricValue: "Submission year",
+        metricCategory: "pos"
+      ),
+      a!map(
+        metricName: "Approval year",
+        metricValue: "Approval year",
+        metricCategory: "pos"
+      ),
+      a!map(
+        metricName: "PoS %",
+        metricValue: "PoS %",
+        metricCategory: "project"
+      ),
+      a!map(
+        metricName: "Peak sales year",
+        metricValue: "peaksalesYear",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "Strategic fit",
+        metricValue: "strategicOutlierBucket",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "Financial attractiveness",
+        metricValue: "financialOutlierBucket",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "Strategic fit - score",
+        metricValue: "strategicOutlier",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "Financial attractiveness - score",
+        metricValue: "financialOutlier",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "Phase",
+        metricValue: "currentPhase",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "Stage",
+        metricValue: "developmentStage",
+        metricCategory: "finance"
+      ),
+      a!map(
+        metricName: "LoE year",
+        metricValue: "keyLOEYear",
+        metricCategory: "project"
+      )
+    },
+    local!selectedCategories: {},
+    local!qualitativeMetrics: {
+      a!map(
+        metricName: "Peak sales",
+        metricValue: "peaksales"
+      ),
+      a!map(metricName: "NPV", metricValue: "npv"),
+      a!map(metricName: "eNPV", metricValue: "enpv"),
+      a!map(metricName: "ROCE", metricValue: "roce"),
+      a!map(metricName: "eROCE", metricValue: "eroce"),
+      a!map(
+        metricName: "Cost to approval (Int + Ext)",
+        metricValue: "sumtoapproval"
+      ),
+      a!map(
+        metricName: "eCost to approval (Int + Ext)",
+        metricValue: "esumtoapproval"
+      ),
+      a!map(metricName: "VNDP", metricValue: "vNdp")
+    },
+    local!selectedSnapshot1,
+    local!selectedSnapshot2,
+    local!snapshotmapping1: if(
+      rule!NSC_isNotEmpty(local!selectedSnapshot1),
+      rule!AND_PHVAL_qe_fetchProjectSnapshotMapping(
+        scenarioName: cons!AND_PHVAL_STANDARDCASES[1],
+        snapshotId: local!selectedSnapshot1
+      ).data,
+      {}
+    ),
+    local!snapshotmapping2: if(
+      rule!NSC_isNotEmpty(local!selectedSnapshot2),
+      rule!AND_PHVAL_qe_fetchProjectSnapshotMapping(
+        scenarioName: cons!AND_PHVAL_STANDARDCASES[1],
+        snapshotId: local!selectedSnapshot2
+      ).data,
+      {}
+    ),
+    local!pharmaCodesforDU: index(
+      rule!AND_PHVAL_fetchCurrentViewByPharmaValId(
+        isActive: true(),
+        devUnitId: local!selectedDU
+      ),
+      "pharmavalCode",
+      "NA"
+    ),
+    local!projectList: if(
+      rule!NSC_isNotEmpty(local!12latesttollgatesnaps),
+      rule!AND_PHVAL_qe_fetchProjectSnapshotMapping(
+        pharmavalCode: if(
+          rule!NSC_isEmpty(local!pharmaCodesforDU),
+          "NA",
+          local!pharmaCodesforDU
+        ),
+        scenarioName: cons!AND_PHVAL_STANDARDCASES[1],
+        snapshotId: property(
+          local!12latesttollgatesnaps,
+          "snapshotId",
+          - 1
+        )
+      ).data,
+      {}
+    ),
+    local!snapshotMappingIdsGraph: if(
+      rule!NSC_isNotEmpty(local!12latesttollgatesnaps),
+      rule!AND_PHVAL_qe_fetchProjectSnapshotMapping(
+        pharmavalCode: if(
+          rule!NSC_isNotEmpty(local!selectedProject),
+          local!selectedProject,
+          if(
+            rule!NSC_isEmpty(local!pharmaCodesforDU),
+            "NA",
+            local!pharmaCodesforDU
+          )
+        ),
+        scenarioName: cons!AND_PHVAL_STANDARDCASES[1],
+        snapshotId: property(
+          local!12latesttollgatesnaps,
+          "snapshotId",
+          - 1
+        )
+      ).data,
+      {}
+    ),
+    local!selectedMetrics: {},
+    local!financials1: if(
+      and(
+        rule!NSC_isNotEmpty(local!selectedSnapshot1),
+        index(
+          index(
+            local!metrics,
+            wherecontains(
+              touniformstring(local!selectedMetrics),
+              index(local!metrics, "metricValue", null)
+            ),
+            {}
+          ),
+          "metricCategory",
+          {}
+        ) = "finance"
+      ),
+      cast(
+        'type!{urn:com:appian:types:phval}and_phval_financial_metrics_export?list',
+        rule!AND_PHVAL_getAllFinanceMetricsforSnapshot(
+          snapshotMappingId: index(
+            local!snapshotmapping1,
+            "projectSnapshotMappingId",
+            {}
+          )
+        )
+      ),
+      {}
+    ),
+    local!project1: if(
+      and(
+        rule!NSC_isNotEmpty(local!selectedSnapshot1),
+        index(
+          index(
+            local!metrics,
+            wherecontains(
+              touniformstring(local!selectedMetrics),
+              index(local!metrics, "metricValue", null)
+            ),
+            null
+          ),
+          "metricCategory",
+          null
+        ) = "project"
+      ),
+      rule!AND_PHVAL_qe_fetchProjectdetailsFromFlatTableforSnapshot(
+        snapshotmappingId: index(
+          local!snapshotmapping1,
+          "projectSnapshotMappingId",
+          {}
+        )
+      ),
+      {}
+    ),
+    local!pos1: if(
+      and(
+        rule!NSC_isNotEmpty(local!selectedSnapshot1),
+        index(
+          index(
+            local!metrics,
+            wherecontains(
+              touniformstring(local!selectedMetrics),
+              index(local!metrics, "metricValue", null)
+            ),
+            null
+          ),
+          "metricCategory",
+          null
+        ) = "pos"
+      ),
+      rule!AND_PHVAL_qe_fetchPosExtractDataForSnapshot(
+        snapshotId: index(
+          local!snapshotmapping1,
+          "projectSnapshotMappingId",
+          {}
+        )
+      ),
+      {}
+    ),
+    local!pos2: if(
+      and(
+        rule!NSC_isNotEmpty(local!selectedSnapshot2),
+        index(
+          index(
+            local!metrics,
+            wherecontains(
+              touniformstring(local!selectedMetrics),
+              index(local!metrics, "metricValue", null)
+            ),
+            null
+          ),
+          "metricCategory",
+          null
+        ) = "pos"
+      ),
+      rule!AND_PHVAL_qe_fetchPosExtractDataForSnapshot(
+        snapshotId: index(
+          local!snapshotmapping1,
+          "projectSnapshotMappingId",
+          {}
+        )
+      ),
+      {}
+    ),
+    local!project2: if(
+      and(
+        rule!NSC_isNotEmpty(local!selectedSnapshot2),
+        index(
+          index(
+            local!metrics,
+            wherecontains(
+              touniformstring(local!selectedMetrics),
+              index(local!metrics, "metricValue", null)
+            ),
+            null
+          ),
+          "metricCategory",
+          null
+        ) = "project"
+      ),
+      rule!AND_PHVAL_qe_fetchProjectdetailsFromFlatTableforSnapshot(
+        snapshotmappingId: index(
+          local!snapshotmapping2,
+          "projectSnapshotMappingId",
+          {}
+        )
+      ),
+      {}
+    ),
+    local!financials2: if(
+      and(
+        rule!NSC_isNotEmpty(local!selectedSnapshot2),
+        index(
+          index(
+            local!metrics,
+            wherecontains(
+              touniformstring(local!selectedMetrics),
+              index(local!metrics, "metricValue", null)
+            ),
+            null
+          ),
+          "metricCategory",
+          null
+        ) = "finance"
+      ),
+      cast(
+        'type!{urn:com:appian:types:phval}and_phval_financial_metrics_export?list',
+        rule!AND_PHVAL_getAllFinanceMetricsforSnapshot(
+          snapshotMappingId: index(
+            local!snapshotmapping2,
+            "projectSnapshotMappingId",
+            {}
+          )
+        )
+      ),
+      {}
+    ),
+    local!financialsGraph: if(
+      rule!NSC_isNotEmpty(local!12latesttollgatesnaps),
+      rule!AND_PHVAL_getAllFinanceMetricsforSnapshot(
+        column1: index(local!selectedMetrics, 1, null),
+        snapshotMappingId: index(
+          local!snapshotMappingIdsGraph,
+          "projectSnapshotMappingId",
+          null
+        )
+      ),
+      {}
+    ),
+    local!pharmavallifecycleData: if(
+      local!across12months,
+      rule!AND_PHVAL_fetchPharmaLifeCycle(
+        lifeCycleId: tointeger(
+          property(
+            local!financialsGraph,
+            "pharmavalLifecycleId",
+            - 1
+          )
+        )
+      ),
+      rule!AND_PHVAL_fetchPharmaLifeCycle(
+        lifeCycleId: union(
+          tointeger(
+            property(
+              local!snapshotmapping1,
+              "pharmavalLifecycleId",
+              - 1
+            )
+          ),
+          tointeger(
+            property(
+              local!snapshotmapping2,
+              "pharmavalLifecycleId",
+              - 1
+            )
+          )
+        ),
+        devUnitId: local!selectedDU
+      )
+    ),
+    local!pharmaValData: if(
+      a!isNullOrEmpty(local!pharmavallifecycleData),
+      {},
+      property(
+        local!pharmavallifecycleData,
+        "pharmavalCode",
+        null
+      )/*rule!AND_PHVAL_fetchPharmaValList(
+        pharmavalId: property(
+          local!pharmavallifecycleData,
+          "pharmaValId",
+          - 1
+        )
+      )*/
+
+    ),
+    local!data: reject(
+      fn!isnull,
+      a!forEach(
+        local!pharmaValData,
+        {
+          a!localVariables(
+            local!lifecycleIdsForProject: tointeger(
+              property(
+                index(
+                  local!pharmavallifecycleData,
+                  wherecontains(
+                    tostring(fv!item),
+                    touniformstring(
+                      property(
+                        local!pharmavallifecycleData,
+                        "pharmavalCode",
+                        null
+                      )
+                    )
+                  ),
+                  null
+                ),
+                "pharmaValLifeCycleId",
+                null
+              )
+            ),
+            local!firstsnapshotproject: index(
+              local!project1,
+              wherecontains(
+                local!lifecycleIdsForProject,
+                tointeger(
+                  property(
+                    local!project1,
+                    "pharmavalLifecycleId",
+                    null
+                  )
+                )
+              ),
+              null
+            ),
+            local!firstsnashotpos: index(
+              local!pos1,
+              wherecontains(
+                local!lifecycleIdsForProject,
+                tointeger(
+                  property(local!pos1, "pharmavalLifecycleId", null)
+                )
+              ),
+              null
+            ),
+            local!firstFinancial: index(
+              local!financials1,
+              wherecontains(
+                local!lifecycleIdsForProject,
+                tointeger(
+                  property(
+                    local!financials1,
+                    "pharmavalLifecycleId",
+                    null
+                  )
+                )
+              ),
+              null
+            ),
+            local!secondFinancial: index(
+              local!financials2,
+              wherecontains(
+                local!lifecycleIdsForProject,
+                tointeger(
+                  property(
+                    local!financials2,
+                    "pharmavalLifecycleId",
+                    null
+                  )
+                )
+              ),
+              null
+            ),
+            local!secondsnapshotproject: index(
+              local!project2,
+              wherecontains(
+                local!lifecycleIdsForProject,
+                tointeger(
+                  property(
+                    local!project2,
+                    "pharmavalLifecycleId",
+                    null
+                  )
+                )
+              ),
+              null
+            ),
+            local!secondsnapshotpos: index(
+              local!pos2,
+              wherecontains(
+                local!lifecycleIdsForProject,
+                tointeger(
+                  property(local!pos2, "pharmavalLifecycleId", null)
+                )
+              ),
+              null
+            ),
+            {
+              if(
+                and(
+                  exact(
+                    a!match(
+                      value: index(local!selectedCategories,1,{}),
+                      equals: "finance",
+                      then: {
+
+                        and(
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            )
+                          )
+                        )
+
+
+
+                      },
+                      equals: "project",
+                      then: {
+                        and(
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            )
+                          )
+                        )
+                      },
+                      equals: "pos",
+                      then: {
+                        and(
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            )
+                          )
+                        )
+                      },
+                      default:{}
+                    ),
+                    a!match(
+                      value: index(local!selectedCategories,2,{}),
+                      equals: "Project",
+                      then: {
+
+                        and(
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            )
+                          )
+                        )
+
+
+
+                      },
+                      equals: "project",
+                      then: {
+                        and(
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            )
+                          )
+                        )
+                      },
+                      equals: "pos",
+                      then: {
+                        and(
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            )
+                          )
+                        )
+                      },
+                      default:{}
+                    ),
+                    a!match(
+                      value: index(local!selectedCategories,3,{}),
+                      equals: "Pos",
+                      then: {
+
+                        and(
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            )
+                          )
+                        )
+
+
+
+                      },
+                      equals: "project",
+                      then: {
+                        and(
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            )
+                          )
+                        )
+                      },
+                      equals: "pos",
+                      then: {
+                        and(
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 1, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 2, null),
+                              0
+                            )
+                          ),
+                          exact(
+                            property(
+                              local!firstFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            ),
+                            property(
+                              local!secondFinancial,
+                              index(local!selectedMetrics, 3, null),
+                              0
+                            )
+                          )
+                        )
+                      },
+                      default:{}
+                    ))),{},
+                    {a!map(
+                      projectCode: fv!item,
+                      /*fv!item.pharmaValCode,*/
+                      financial1_m1: property(
+                        local!firstFinancial,
+                        index(local!selectedMetrics, 1, null),
+                        null
+                      ),
+                      financial2_m1: property(
+                        local!secondFinancial,
+                        index(local!selectedMetrics, 1, null),
+                        null
+                      ),
+                      financial1_m2: property(
+                        local!firstFinancial,
+                        index(local!selectedMetrics, 2, null),
+                        null
+                      ),
+                      financial2_m2: property(
+                        local!secondFinancial,
+                        index(local!selectedMetrics, 2, null),
+                        null
+                      ),
+                      financial1_m3: property(
+                        local!firstFinancial,
+                        index(local!selectedMetrics, 3, null),
+                        null
+                      ),
+                      financial2_m3: property(
+                        local!secondFinancial,
+                        index(local!selectedMetrics, 3, null),
+                        null
+                      ),
+                      project1_m1: property(
+                        local!firstsnapshotproject,
+                        index(local!selectedMetrics, 1, null),
+                        null
+                      ),
+                      project2_m1: property(
+                        local!secondsnapshotproject,
+                        index(local!selectedMetrics, 1, null),
+                        null
+                      ),
+                      project1_m2: property(
+                        local!firstsnapshotproject,
+                        index(local!selectedMetrics, 2, null),
+                        null
+                      ),
+                      project2_m2: property(
+                        local!secondsnapshotproject,
+                        index(local!selectedMetrics, 2, null),
+                        null
+                      ),
+                      project1_m3: property(
+                        local!firstsnapshotproject,
+                        index(local!selectedMetrics, 3, null),
+                        null
+                      ),
+                      project2_m3: property(
+                        local!secondsnapshotproject,
+                        index(local!selectedMetrics, 3, null),
+                        null
+                      ),
+                      pos1_m1: property(
+                        local!firstsnashotpos,
+                        index(local!selectedMetrics, 1, null),
+                        null
+                      ),
+                      pos2_m1: property(
+                        local!secondsnapshotpos,
+                        index(local!selectedMetrics, 1, null),
+                        null
+                      ),
+                      pos1_m2: property(
+                        local!firstsnashotpos,
+                        index(local!selectedMetrics, 2, null),
+                        null
+                      ),
+                      pos2_m2: property(
+                        local!secondsnapshotpos,
+                        index(local!selectedMetrics, 2, null),
+                        null
+                      ),
+                      pos1_m3: property(
+                        local!firstsnashotpos,
+                        index(local!selectedMetrics, 3, null),
+                        null
+                      ),
+                      pos2_m3: property(
+                        local!secondsnapshotpos,
+                        index(local!selectedMetrics, 3, null),
+                        null
+                      )
+                    )}
+              )
+            }
+          )
+        }
+      )
+    ),
+    local!graphData: a!forEach(
+      local!projectList,
+      a!map(
+        projectCode: property(fv!item, "pharmavalCode", null),
+        date: index(
+          todate(
+            text(
+              property(
+                index(
+                  local!12latesttollgatesnaps,
+                  wherecontains(
+                    tointeger(property(fv!item, "snapshotId", null)),
+                    tointeger(
+                      property(
+                        local!12latesttollgatesnaps,
+                        "snapshotId",
+                        null
+                      )
+                    )
+                  ),
+                  null
+                ),
+                "snapshotDate",
+                null
+              ),
+              "dd/mm/yyyy"
+            )
+          ),
+          1,
+          null
+        ),
+        metricName: index(local!selectedMetrics, 1, null),
+        metrics1: index(
+          property(
+            index(
+              local!financialsGraph,
+              wherecontains(
+                tointeger(
+                  property(
+                    fv!item,
+                    "projectSnapshotMappingId",
+                    null
+                  )
+                ),
+                tointeger(
+                  property(
+                    local!financialsGraph,
+                    "snapshotId",
+                    null
+                  )
+                )
+              ),
+              null
+            ),
+            index(local!selectedMetrics, 1, null),
+            null
+          ),
+          1,
+          null
+        ),
+        metrics2: {}/* index(
+          property(
+            index(
+              local!financialsGraph,
+              wherecontains(
+                tointeger(
+                  property(
+                    fv!item,
+                    "projectSnapshotMappingId",
+                    null
+                  )
+                ),
+                tointeger(
+                  property(
+                    local!financialsGraph,
+                    "snapshotId",
+                    null
+                  )
+                )
+              ),
+              null
+            ),
+            "enpv",
+            null
+          ),
+          1,
+          null
+        )*/
+
+      )
+    ),
+    local!showSummative,
+    local!graphDataAggr: if(
+      or(local!showSummative),
+      a!forEach(
+        union(
+          index(local!graphData, "date", null),
+          index(local!graphData, "date", null)
+        ),
+        {
+          date: fv!item,
+          metricName: index(local!selectedMetrics, 1, null),
+          metrics1: /*fv!index,*/
+          sum(
+            index(
+              index(
+                local!graphData,
+                wherecontains(
+                  fv!item,
+                  index(local!graphData, "date", null)
+                ),
+                null
+              ),
+              "metrics1",
+              null
+            )
+          ),
+          metrics2: {}/*sum(
+            index(
+              index(
+                local!graphData,
+                wherecontains(
+                  fv!item,
+                  index(local!graphData, "date", null)
+                ),
+                null
+              ),
+              "metrics2",
+              null
+            )
+          )*/
+
+        }
+      ),
+      {}
+    ),
+    local!extracts: if(
+      a!isNullOrEmpty(local!projectList),
+      null,
+      rule!AND_PHVAL_qe_fetchProjectdetailsFromFlatTableforSnapshot(
+        snapshotmappingId: index(
+          local!projectList,
+          "projectSnapshotMappingId",
+          null
+        )
+      )
+    ),
+    local!snapshot1name: index(
+      index(
+        local!snapshotlist,
+        wherecontains(
+          tointeger(local!selectedSnapshot1),
+          tointeger(
+            index(local!snapshotlist, "snapshotId", null)
+          )
+        ),
+        null
+      ),
+      "name",
+      null
+    ),
+    local!snapshot2name: index(
+      index(
+        local!snapshotlist,
+        wherecontains(
+          tointeger(local!selectedSnapshot2),
+          tointeger(
+            index(local!snapshotlist, "snapshotId", null)
+          )
+        ),
+        null
+      ),
+      "name",
+      null
+    ),
+    /* local!yaxisMax:if(
+      and(a!isNullOrEmpty(local!graphDataAggr),a!isNullOrEmpty(local!graphData)),0,
+      max(if(
+      or(local!showSummative),
+
+      local!graphDataAggr,
+      local!graphData
+    ),"metrics1",null)),
+    local!yaxisMin:min(if(
+      or(local!showSummative),
+
+      local!graphDataAggr,
+      local!graphData
+    ),"metrics1",null),*/
+    {
+      /*select snapshots to compare*/
+      a!cardLayout(
+        contents: a!columnsLayout(
+          columns: {
+            a!columnLayout(
+              contents: a!richTextDisplayField(
+                value: a!richTextItem_18r1(
+                  text: "select snapshots to compare",
+                  style: "STRONG"
+                )
+              ),
+              width: "NARROW_PLUS"
+            ),
+            a!columnLayout(
+              contents: a!dropdownField_20r2(
+                labelPosition: "COLLAPSED",
+                placeholder: "--- Select snapshot1 ---",
+                choiceLabels: index(local!snapshotlist, "name", null),
+                choiceValues: index(local!snapshotlist, "snapshotId", null),
+                value: local!selectedSnapshot1,
+                saveInto: { local!selectedSnapshot1 },
+                searchDisplay: "AUTO",
+                disabled: local!across12months,
+                validations: {}
+              )
+            ),
+            a!columnLayout(
+              contents: a!dropdownField_20r2(
+                labelPosition: "COLLAPSED",
+                placeholder: "--- Select snapshot2 ---",
+                choiceLabels: index(local!snapshotlist, "name", null),
+                choiceValues: index(local!snapshotlist, "snapshotId", null),
+                value: local!selectedSnapshot2,
+                saveInto: { local!selectedSnapshot2 },
+                searchDisplay: "AUTO",
+                disabled: local!across12months,
+                validations: {}
+              )
+            ),
+            a!columnLayout(
+              contents: a!multipleDropdownField_20r2(
+                labelPosition: "COLLAPSED",
+                placeholder: "--- Select metrics (Max 3) ---",
+                choiceLabels: local!metrics.metricName,
+                choiceValues: local!metrics.metricValue,
+                value: local!selectedMetrics,
+                saveInto: {
+                  local!selectedMetrics,
+                  a!save(
+                    local!selectedCategories,
+                    index(
+                      index(
+                        local!metrics,
+                        wherecontains(
+                          touniformstring(save!value),
+                          index(local!metrics, "metricValue", null)
+                        ),
+                        null
+                      ),
+                      "metricCategory",
+                      null
+                    ),
+
+                  )
+                },
+                searchDisplay: "AUTO",
+                validations: {
+                  if(
+                    length(local!selectedMetrics) > 3,
+                    "Kindly select 3 metrics at max.",
+                    ""
+                  )
+                }
+              ),
+              showWhen: not(or(local!across12months))
+            ),
+            a!columnLayout(
+              contents: a!multipleDropdownField_20r2(
+                labelPosition: "COLLAPSED",
+                placeholder: "--- Select metrics (Max 3) ---",
+                choiceLabels: local!qualitativeMetrics.metricName,
+                choiceValues: local!qualitativeMetrics.metricValue,
+                value: local!selectedMetrics,
+                saveInto: {
+                  local!selectedMetrics,
+                  a!save(
+                    local!selectedCategories,
+                    local!selectedMetrics
+                  )
+                },
+                /*a!save(local!selectedCategories,*/
+                /*if(local!qualitativeMetrics.metricName=or("PoS %","LoE year"),"project","finance"))},*/
+                searchDisplay: "AUTO",
+                validations: {
+                  if(
+                    length(local!selectedMetrics) > 1,
+                    "Kindly select 1 metrics at max.",
+                    ""
+                  )
+                }
+              ),
+              showWhen: or(local!across12months)
+            ),
+            a!columnLayout(
+              contents: a!checkboxField(
+                labelPosition: "ABOVE",
+                choiceLabels: {
+                  "Across last 12 months tollgate Snapshots (only quantitative metrics)"
+                },
+                choiceValues: { true() },
+                value: local!across12months,
+                saveInto: local!across12months
+              ),
+              width: "2X"
+            ),
+            a!columnLayout(
+              contents: a!checkboxField(
+                labelPosition: "ABOVE",
+                choiceLabels: { "Summative assesment" },
+                choiceValues: { true() },
+                value: local!showSummative,
+                saveInto: local!showSummative
+              ),
+              width: "1X"
+            )
+          }
+        ),
+        style: "INFO",
+        marginBelow: "LESS",
+        decorativeBarPosition: "START",
+        decorativeBarColor: "ACCENT"
+      ),
+      rule!AND_PHVAL_duFilters(
+        selectedDU: local!selectedDU,
+        selectedValues: local!selectedProject
+      ),
+      a!columnsLayout(
+        columns: {
+          a!columnLayout(
+            contents: {
+              a!richTextDisplayField(
+                value: a!richTextItem_18r1(text: "* values are in $mn *")
+              )
+            }
+          ),
+          /*a!columnLayout(
+            contents: {
+              a!integerField(
+                label: "Y axis min (" & min(
+                  property(local!graphData, "metrics1", null)
+                ) & ")",
+                value: local!yaxisMin,
+                saveInto: local!yaxisMin
+              ),
+
+            }
+          ),
+          a!columnLayout(
+            contents: {
+              a!integerField(
+                label: "Y axis max (" & max(
+                  property(local!graphData, "metrics1", null)
+                ) & ")",
+                value: local!yaxisMax,
+                saveInto: local!yaxisMax
+              ),
+
+            }
+          )*/
+
+        }
+      ),
+      a!columnsLayout(
+        columns: {
+          /*left side project info cards for selection*/
+          a!columnLayout(
+            contents: a!cardLayout(
+              height: "TALL_PLUS",
+              contents: {
+                a!forEach(
+                  items: union(
+                    index(local!graphData, "projectCode", null),
+                    index(local!graphData, "projectCode", null)
+                  ),
+                  expression: a!cardLayout(
+                    contents: {
+                      a!sideBySideLayout(
+                        items: {
+                          a!sideBySideItem(
+                            item: a!richTextDisplayField(
+                              label: "Rich Text",
+                              labelPosition: "COLLAPSED",
+                              value: {
+                                a!richTextItem_18r1(
+                                  linkStyle: "STANDALONE",
+                                  link: a!dynamicLink(
+                                    saveInto: /*a!save(local!selectedProject,fv!item)*/
+                                    if(
+                                      /*false(),*/
+                                      contains(
+                                        touniformstring(local!selectedProject),
+                                        tostring(fv!item)
+                                      ),
+                                      a!save(
+                                        local!selectedProject,
+                                        remove(
+                                          local!selectedProject,
+                                          wherecontains(
+                                            tostring(fv!item),
+                                            touniformstring(local!selectedProject)
+                                          )
+                                        )
+                                      ),
+                                      a!save(
+                                        local!selectedProject,
+                                        append(
+                                          local!selectedProject,
+                                          tostring(fv!item)
+                                        )
+                                      )
+                                    )
+                                  ),
+                                  text: if(
+                                    a!isNotNullOrEmpty(
+                                      index(
+                                        index(
+                                          index(
+                                            local!extracts,
+                                            wherecontains(
+                                              touniformstring(fv!item),
+                                              touniformstring(
+                                                index(local!extracts, "projectCode", null)
+                                              )
+                                            ),
+                                            null
+                                          ),
+                                          "brandName",
+                                          null
+                                        ),
+                                        1,
+                                        null
+                                      )
+                                    ),
+                                    index(
+                                      index(
+                                        index(
+                                          local!extracts,
+                                          wherecontains(
+                                            touniformstring(fv!item),
+                                            touniformstring(
+                                              index(local!extracts, "projectCode", null)
+                                            )
+                                          ),
+                                          null
+                                        ),
+                                        "brandName",
+                                        null
+                                      ),
+                                      1,
+                                      null
+                                    ) & " | " & fv!item,
+                                    if(
+                                      a!isNotNullOrEmpty(
+                                        index(
+                                          index(
+                                            index(
+                                              local!extracts,
+                                              wherecontains(
+                                                touniformstring(fv!item),
+                                                touniformstring(
+                                                  index(local!extracts, "projectCode", null)
+                                                )
+                                              ),
+                                              null
+                                            ),
+                                            "genericName",
+                                            null
+                                          ),
+                                          1,
+                                          null
+                                        )
+                                      ),
+                                      index(
+                                        index(
+                                          index(
+                                            local!extracts,
+                                            wherecontains(
+                                              touniformstring(fv!item),
+                                              touniformstring(
+                                                property(local!extracts, "projectCode", null)
+                                              )
+                                            ),
+                                            null
+                                          ),
+                                          "genericName",
+                                          null
+                                        ),
+                                        1,
+                                        null
+                                      ) & " | " & fv!item,
+                                      fv!item
+                                    )
+                                  ),
+                                  color: "ACCENT",
+                                  size: "STANDARD"
+                                )
+                              }
+                            ),
+                            width: "3X"
+                          )
+                        },
+                        marginbelow: "NONE"
+                      )
+                    },
+                    padding: "EVEN_LESS",
+                    marginBelow: "STANDARD",
+                    showBorder: false(),
+                    style: if(
+                      contains(
+                        touniformstring(local!selectedProject),
+                        fv!item
+                      ),
+                      "ACCENT",
+                      null
+                    )
+                  )
+                )
+              }
+            ),
+            width: "NARROW",
+            showWhen: and(
+              or(local!across12months),
+              a!isNotNullOrEmpty(local!graphData)
+            )
+          ),
+          a!columnLayout(
+            contents: {
+              /*chart for 12 months trend*/
+              if(
+                local!across12months,
+                rule!AND_PHVAL_SnapshotComparisonGraph(
+                  graphData: if(
+                    or(local!showSummative),
+                    local!graphDataAggr,
+                    local!graphData
+                  )
+                ),
+                {}
+              ),
+              /*Table to show difference between 2 snapshots*/
+              a!gridField_19r1(
+                height: "TALL",
+                label: "Comparison",
+                labelPosition: "COLLAPSED",
+                emptyGridMessage: "Snapshots have same metrics.",
+                data: if(
+                  a!isNullOrEmpty(local!selectedProject),
+                  local!data,
+                  index(
+                    local!data,
+                    wherecontains(
+                      touniformstring(local!selectedProject),
+                      touniformstring(
+                        property(local!data, "projectCode", null)
+                      )
+                    ),
+                    null
+                  )
+                ),
+                columns: {
+                  a!gridColumn(
+                    label: "Project Code",
+                    value: a!richTextDisplayField(
+                      value: a!richTextItem_18r1(fv!row.projectCode)
+                    ),
+                    showWhen: length(local!selectedMetrics) >= 1
+                  ),
+                  a!gridColumn(
+                    align: "END",
+                    label: local!snapshot1name & " " & index(
+                      index(
+                        local!metrics,
+                        wherecontains(
+                          local!selectedMetrics[1],
+                          index(local!metrics, "metricValue", null)
+                        ),
+                        null
+                      ),
+                      "metricName",
+                      null
+                    ),
+                    value: a!richTextDisplayField(
+                      value: a!richTextItem_18r1(
+                        text: if(
+                          contains(
+                            { "ROCE", "eROCE" },
+                            index(local!selectedMetrics, 1, null)
+                          ),
+                          fixed(fv!row.financial1_m1, 2),
+                          fixed(fv!row.financial1_m1, 1),
+                          fixed(fv!row.project1_m1, 2),
+                          fixed(fv!row.project1_m1, 1),
+                          fixed(fv!row.pos1_m1, 2),
+                          fixed(fv!row.pos2_m2,1)
+                        )
+                      )
+                    ),
+                    showWhen: length(local!selectedMetrics) >= 1
+                  ),
+                  a!gridColumn(
+                    align: "END",
+                    label: local!snapshot2name & " " & index(
+                      index(
+                        local!metrics,
+                        wherecontains(
+                          local!selectedMetrics[1],
+                          index(local!metrics, "metricValue", null)
+                        ),
+                        null
+                      ),
+                      "metricName",
+                      null
+                    ),
+                    value: a!richTextDisplayField(
+                      value: a!richTextItem_18r1(
+                        text: if(
+                          contains(
+                            { "ROCE", "eROCE" },
+                            index(local!selectedMetrics, 1, null)
+                          ),
+                          fixed(fv!row.financial2_m1, 1),
+                          fixed(fv!row.financial2_m1, 1)
+                        )
+                      )
+                    ),
+                    showWhen: length(local!selectedMetrics) >= 1
+                  ),
+                  a!gridColumn(
+                    align: "END",
+                    label: local!snapshot1name & " " & index(
+                      index(
+                        local!metrics,
+                        wherecontains(
+                          local!selectedMetrics[2],
+                          index(local!metrics, "metricValue", null)
+                        ),
+                        null
+                      ),
+                      "metricName",
+                      null
+                    ),
+                    value: a!richTextDisplayField(
+                      value: a!richTextItem_18r1(
+                        text: if(
+                          contains(
+                            { "ROCE", "eROCE" },
+                            index(local!selectedMetrics, 2, null)
+                          ),
+                          fixed(fv!row.financial1_m2, 2),
+                          fixed(fv!row.financial1_m2, 1)
+                        )
+                      )
+                    ),
+                    showWhen: length(local!selectedMetrics) >= 2
+                  ),
+                  a!gridColumn(
+                    align: "END",
+                    label: local!snapshot2name & " " & index(
+                      index(
+                        local!metrics,
+                        wherecontains(
+                          local!selectedMetrics[2],
+                          index(local!metrics, "metricValue", null)
+                        ),
+                        null
+                      ),
+                      "metricName",
+                      null
+                    ),
+                    value: a!richTextDisplayField(
+                      value: a!richTextItem_18r1(
+                        text: if(
+                          contains(
+                            { "ROCE", "eROCE" },
+                            index(local!selectedMetrics, 2, null)
+                          ),
+                          fixed(fv!row.financial2_m2, 2),
+                          fixed(fv!row.financial2_m2, 1)
+                        )
+                      )
+                    ),
+                    showWhen: length(local!selectedMetrics) >= 2
+                  ),
+                  a!gridColumn(
+                    align: "END",
+                    label: local!snapshot1name & " " & index(
+                      index(
+                        local!metrics,
+                        wherecontains(
+                          local!selectedMetrics[3],
+                          index(local!metrics, "metricValue", null)
+                        ),
+                        null
+                      ),
+                      "metricName",
+                      null
+                    ),
+                    value: a!richTextDisplayField(
+                      value: a!richTextItem_18r1(
+                        text: if(
+                          contains(
+                            { "ROCE", "eROCE" },
+                            index(local!selectedMetrics, 3, null)
+                          ),
+                          fixed(fv!row.financial1_m3),
+                          fixed(fv!row.financial1_m3, 1)
+                        )
+                      )
+                    ),
+                    showWhen: length(local!selectedMetrics) = 3
+                  ),
+                  a!gridColumn(
+                    align: "END",
+                    label: local!snapshot2name & " " & index(
+                      index(
+                        local!metrics,
+                        wherecontains(
+                          local!selectedMetrics[3],
+                          index(local!metrics, "metricValue", null)
+                        ),
+                        null
+                      ),
+                      "metricName",
+                      null
+                    ),
+                    value: a!richTextDisplayField(
+                      value: a!richTextItem_18r1(
+                        text: if(
+                          contains(
+                            { "ROCE", "eROCE" },
+                            index(local!selectedMetrics, 3, null)
+                          ),
+                          fixed(fv!row.financial2_m3),
+                          fixed(fv!row.financial2_m3, 1)
+                        )
+                      )
+                    ),
+                    showWhen: length(local!selectedMetrics) = 3
+                  )
+                },
+                pageSize: 100,
+                showWhen: and(
+                  rule!NSC_isNotEmpty(local!selectedMetrics),
+                  not(or(local!across12months))
+                ),
+                validations: {}
+              )
+            }
+          )
+        },
+        marginAbove: "STANDARD"
+      )
+    }
+  )
+}
